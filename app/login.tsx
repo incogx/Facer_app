@@ -39,7 +39,9 @@ export default function LoginScreen() {
     if (!authLoading && session) {
       if (student) {
         // choose next route based on whether face/enrollment exists
-        if ((student as any).face_encoding) {
+        const hasFace = (student as any).face_encoding && (student as any).face_encoding.trim() !== '';
+        console.log('Login redirect - Student:', student.name, 'Has face:', hasFace, 'Face value:', (student as any).face_encoding);
+        if (hasFace) {
           router.replace('/(tabs)');
         } else {
           router.replace('/face-capture');

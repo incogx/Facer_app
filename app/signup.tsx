@@ -14,8 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react-native';
-import { Picker } from '@react-native-picker/picker';
+import { ArrowLeft, Lock, User, Phone, Eye, EyeOff, BookOpen, ChevronDown } from 'lucide-react-native';
 
 const BRAND = {
   maroon: '#7A1431',
@@ -24,6 +23,7 @@ const BRAND = {
   surface: '#FFFFFF',
   text: '#4A4A4A',
   muted: '#7A6A6A',
+  lightGray: '#F3F4F6',
 };
 
 const DEPARTMENTS = [
@@ -42,7 +42,6 @@ export default function SignupScreen() {
 
   const [regNumber, setRegNumber] = useState('');
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [department, setDepartment] = useState(DEPARTMENTS[0]);
   const [classNumber, setClassNumber] = useState('');
@@ -54,6 +53,7 @@ export default function SignupScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showDeptPicker, setShowDeptPicker] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -82,7 +82,6 @@ export default function SignupScreen() {
     setError('');
     const reg = (regNumber || '').trim();
     const nm = (name || '').trim();
-    const em = (email || '').trim();
     const ph = (phone || '').trim();
     const cls = (classNumber || '').trim();
     const sec = (section || '').trim();
@@ -97,10 +96,6 @@ export default function SignupScreen() {
     }
     if (!nm || nm.length < 2) {
       setError('Please enter your full name');
-      return false;
-    }
-    if (!em || !em.includes('@')) {
-      setError('Please enter a valid email address');
       return false;
     }
     if (!ph || !/^\+?\d{7,15}$/.test(ph)) {
@@ -119,8 +114,8 @@ export default function SignupScreen() {
       setError('Please enter your section');
       return false;
     }
-    if (!password || password.length < 8) {
-      setError('Password must be at least 8 characters');
+    if (!password || password.length < 6) {
+      setError('Password must be at least 6 characters');
       return false;
     }
     if (password !== confirmPassword) {
@@ -140,7 +135,7 @@ export default function SignupScreen() {
         regNumber.trim(),
         password,
         name.trim(),
-        email.trim().toLowerCase(),
+        '', // email - not required anymore
         phone.trim(),
         department,
         classNumber.trim(),
@@ -185,305 +180,357 @@ export default function SignupScreen() {
               <ArrowLeft size={22} color={BRAND.maroon} />
             </TouchableOpacity>
 
-            <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 36 }}>
-              <View style={{ alignItems: 'center', marginBottom: 18 }}>
-                <Text style={{ fontSize: 28, fontWeight: '800', color: BRAND.maroon, marginBottom: 6 }}>Join Sathyabama</Text>
-                <Text style={{ fontSize: 14, color: BRAND.muted }}>Create your account to get started</Text>
+            <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 20, paddingVertical: 40 }}>
+              {/* Header */}
+              <View style={{ alignItems: 'center', marginBottom: 28 }}>
+                <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: BRAND.maroonLight, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                  <BookOpen size={32} color={BRAND.maroon} />
+                </View>
+                <Text style={{ fontSize: 26, fontWeight: '800', color: BRAND.maroon, marginBottom: 6 }}>Create Account</Text>
+                <Text style={{ fontSize: 14, color: BRAND.muted }}>Register to mark attendance</Text>
               </View>
 
+              {/* Form Card */}
               <View
                 style={{
                   backgroundColor: BRAND.surface,
-                  borderRadius: 18,
-                  padding: 20,
+                  borderRadius: 16,
+                  padding: 18,
                   shadowColor: '#000',
-                  shadowOpacity: 0.05,
-                  shadowRadius: 20,
-                  shadowOffset: { width: 0, height: 6 },
-                  elevation: 6,
+                  shadowOpacity: 0.08,
+                  shadowRadius: 16,
+                  shadowOffset: { width: 0, height: 4 },
+                  elevation: 5,
                 }}
               >
+                {/* Error Message */}
                 {error ? (
                   <View
                     style={{
-                      backgroundColor: '#fef2f2',
-                      borderWidth: 1,
-                      borderColor: '#fecaca',
-                      borderRadius: 12,
+                      backgroundColor: '#FEE2E2',
+                      borderLeftWidth: 4,
+                      borderLeftColor: '#DC2626',
+                      borderRadius: 8,
                       padding: 12,
                       marginBottom: 16,
                     }}
                   >
-                    <Text style={{ color: '#dc2626', fontSize: 14 }}>{error}</Text>
+                    <Text style={{ color: '#991B1B', fontSize: 13, fontWeight: '500' }}>{error}</Text>
                   </View>
                 ) : null}
 
-                {/* Name */}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: BRAND.surface,
-                    borderWidth: 1,
-                    borderColor: BRAND.maroonLight,
-                    borderRadius: 12,
-                    marginBottom: 12,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <User size={18} color={BRAND.maroon} style={{ marginLeft: 12, paddingVertical: 12, paddingHorizontal: 10, backgroundColor: 'rgba(122,20,49,0.03)' }} />
-                  <TextInput
-                    style={{ flex: 1, fontSize: 16, paddingVertical: 14, paddingHorizontal: 12, color: BRAND.text }}
-                    placeholder="Full Name"
-                    placeholderTextColor="#A1A1A1"
-                    value={name}
-                    onChangeText={setName}
-                    autoCapitalize="words"
-                    editable={!loading}
-                  />
-                </View>
+                {/* Registration Number & Name in 2 columns */}
+                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+                  {/* Reg Number */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: BRAND.text, marginBottom: 6 }}>Reg. Number</Text>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: BRAND.lightGray,
+                        borderWidth: 1,
+                        borderColor: '#E5E7EB',
+                        borderRadius: 10,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <User size={16} color={BRAND.maroon} style={{ marginLeft: 10 }} />
+                      <TextInput
+                        style={{ flex: 1, fontSize: 14, paddingVertical: 12, paddingHorizontal: 10, color: BRAND.text }}
+                        placeholder="43732001"
+                        placeholderTextColor="#9CA3AF"
+                        value={regNumber}
+                        onChangeText={setRegNumber}
+                        keyboardType="number-pad"
+                        editable={!loading}
+                      />
+                    </View>
+                  </View>
 
-                {/* Reg Number */}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: BRAND.surface,
-                    borderWidth: 1,
-                    borderColor: BRAND.maroonLight,
-                    borderRadius: 12,
-                    marginBottom: 12,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <User size={18} color={BRAND.maroon} style={{ marginLeft: 12, paddingVertical: 12, paddingHorizontal: 10, backgroundColor: 'rgba(122,20,49,0.03)' }} />
-                  <TextInput
-                    style={{ flex: 1, fontSize: 16, paddingVertical: 14, paddingHorizontal: 12, color: BRAND.text }}
-                    placeholder="Registration Number (e.g., 43732001)"
-                    placeholderTextColor="#A1A1A1"
-                    value={regNumber}
-                    onChangeText={setRegNumber}
-                    autoCapitalize="none"
-                    keyboardType="number-pad"
-                    editable={!loading}
-                  />
-                </View>
-
-                {/* Email */}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: BRAND.surface,
-                    borderWidth: 1,
-                    borderColor: BRAND.maroonLight,
-                    borderRadius: 12,
-                    marginBottom: 12,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <Mail size={18} color={BRAND.maroon} style={{ marginLeft: 12, paddingVertical: 12, paddingHorizontal: 10, backgroundColor: 'rgba(122,20,49,0.03)' }} />
-                  <TextInput
-                    style={{ flex: 1, fontSize: 16, paddingVertical: 14, paddingHorizontal: 12, color: BRAND.text }}
-                    placeholder="Email Address"
-                    placeholderTextColor="#A1A1A1"
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    editable={!loading}
-                  />
-                </View>
-
-                {/* Phone */}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: BRAND.surface,
-                    borderWidth: 1,
-                    borderColor: BRAND.maroonLight,
-                    borderRadius: 12,
-                    marginBottom: 12,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <Phone size={18} color={BRAND.maroon} style={{ marginLeft: 12, paddingVertical: 12, paddingHorizontal: 10, backgroundColor: 'rgba(122,20,49,0.03)' }} />
-                  <TextInput
-                    style={{ flex: 1, fontSize: 16, paddingVertical: 14, paddingHorizontal: 12, color: BRAND.text }}
-                    placeholder="Phone (e.g., +919000000000)"
-                    placeholderTextColor="#A1A1A1"
-                    value={phone}
-                    onChangeText={setPhone}
-                    keyboardType="phone-pad"
-                    autoCapitalize="none"
-                    editable={!loading}
-                  />
-                </View>
-
-                {/* Department (Picker) */}
-                <View
-                  style={{
-                    borderWidth: 1,
-                    borderColor: BRAND.maroonLight,
-                    borderRadius: 12,
-                    marginBottom: 12,
-                    overflow: 'hidden',
-                    backgroundColor: BRAND.surface,
-                  }}
-                >
-                  <View style={{ paddingVertical: 10, paddingHorizontal: 12 }}>
-                    <Text style={{ color: BRAND.maroon, marginBottom: 6 }}>Dept</Text>
-                    <View style={{ borderRadius: 8, overflow: 'hidden', borderColor: '#f1f1f1', borderWidth: 0 }}>
-                      <Picker
-                        selectedValue={department}
-                        onValueChange={(val) => setDepartment(val)}
-                        enabled={!loading}
-                      >
-                        {DEPARTMENTS.map((d) => (
-                          <Picker.Item key={d} label={d} value={d} />
-                        ))}
-                      </Picker>
+                  {/* Name */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: BRAND.text, marginBottom: 6 }}>Full Name</Text>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: BRAND.lightGray,
+                        borderWidth: 1,
+                        borderColor: '#E5E7EB',
+                        borderRadius: 10,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <User size={16} color={BRAND.maroon} style={{ marginLeft: 10 }} />
+                      <TextInput
+                        style={{ flex: 1, fontSize: 14, paddingVertical: 12, paddingHorizontal: 10, color: BRAND.text }}
+                        placeholder="Your name"
+                        placeholderTextColor="#9CA3AF"
+                        value={name}
+                        onChangeText={setName}
+                        autoCapitalize="words"
+                        editable={!loading}
+                      />
                     </View>
                   </View>
                 </View>
 
-                {/* Class Number */}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: BRAND.surface,
-                    borderWidth: 1,
-                    borderColor: BRAND.maroonLight,
-                    borderRadius: 12,
-                    marginBottom: 12,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <Text style={{ marginLeft: 12, paddingVertical: 12, paddingHorizontal: 10, color: BRAND.maroon }}>Class</Text>
-                  <TextInput
-                    style={{ flex: 1, fontSize: 16, paddingVertical: 14, paddingHorizontal: 12, color: BRAND.text }}
-                    placeholder="Class Number (e.g., 373)"
-                    placeholderTextColor="#A1A1A1"
-                    value={classNumber}
-                    onChangeText={setClassNumber}
-                    keyboardType="number-pad"
-                    editable={!loading}
-                  />
+                {/* Phone */}
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: BRAND.text, marginBottom: 6 }}>Phone Number</Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: BRAND.lightGray,
+                      borderWidth: 1,
+                      borderColor: '#E5E7EB',
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <Phone size={16} color={BRAND.maroon} style={{ marginLeft: 10 }} />
+                    <TextInput
+                      style={{ flex: 1, fontSize: 14, paddingVertical: 12, paddingHorizontal: 10, color: BRAND.text }}
+                      placeholder="+919000000000"
+                      placeholderTextColor="#9CA3AF"
+                      value={phone}
+                      onChangeText={setPhone}
+                      keyboardType="phone-pad"
+                      editable={!loading}
+                    />
+                  </View>
+                </View>
+
+                {/* Department & Class in 2 columns */}
+                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+                  {/* Department */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: BRAND.text, marginBottom: 6 }}>Department</Text>
+                    <TouchableOpacity
+                      onPress={() => setShowDeptPicker(!showDeptPicker)}
+                      disabled={loading}
+                      activeOpacity={0.7}
+                    >
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          backgroundColor: BRAND.lightGray,
+                          borderWidth: 1,
+                          borderColor: '#E5E7EB',
+                          borderRadius: 10,
+                          paddingVertical: 12,
+                          paddingHorizontal: 10,
+                        }}
+                      >
+                        <Text style={{ fontSize: 14, color: BRAND.text, fontWeight: '500' }}>{department}</Text>
+                        <ChevronDown size={16} color={BRAND.maroon} />
+                      </View>
+                    </TouchableOpacity>
+                    
+                    {/* Department Dropdown Menu */}
+                    {showDeptPicker && (
+                      <View
+                        style={{
+                          position: 'absolute',
+                          top: 55,
+                          left: 0,
+                          right: 0,
+                          backgroundColor: BRAND.surface,
+                          borderWidth: 1,
+                          borderColor: '#E5E7EB',
+                          borderRadius: 10,
+                          zIndex: 1000,
+                          shadowColor: '#000',
+                          shadowOpacity: 0.1,
+                          shadowRadius: 8,
+                          shadowOffset: { width: 0, height: 2 },
+                          elevation: 8,
+                        }}
+                      >
+                        <ScrollView style={{ maxHeight: 200 }}>
+                          {DEPARTMENTS.map((dept) => (
+                            <TouchableOpacity
+                              key={dept}
+                              onPress={() => {
+                                setDepartment(dept);
+                                setShowDeptPicker(false);
+                              }}
+                              style={{
+                                paddingVertical: 10,
+                                paddingHorizontal: 12,
+                                borderBottomWidth: 1,
+                                borderBottomColor: '#F3F4F6',
+                              }}
+                              activeOpacity={0.6}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 14,
+                                  color: department === dept ? BRAND.maroon : BRAND.text,
+                                  fontWeight: department === dept ? '700' : '500',
+                                }}
+                              >
+                                {dept}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Class Number */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: BRAND.text, marginBottom: 6 }}>Class</Text>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: BRAND.lightGray,
+                        borderWidth: 1,
+                        borderColor: '#E5E7EB',
+                        borderRadius: 10,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <TextInput
+                        style={{ flex: 1, fontSize: 14, paddingVertical: 12, paddingHorizontal: 10, color: BRAND.text }}
+                        placeholder="373"
+                        placeholderTextColor="#9CA3AF"
+                        value={classNumber}
+                        onChangeText={setClassNumber}
+                        keyboardType="number-pad"
+                        editable={!loading}
+                      />
+                    </View>
+                  </View>
                 </View>
 
                 {/* Section */}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: BRAND.surface,
-                    borderWidth: 1,
-                    borderColor: BRAND.maroonLight,
-                    borderRadius: 12,
-                    marginBottom: 12,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <Text style={{ marginLeft: 12, paddingVertical: 12, paddingHorizontal: 10, color: BRAND.maroon }}>Section</Text>
-                  <TextInput
-                    style={{ flex: 1, fontSize: 16, paddingVertical: 14, paddingHorizontal: 12, color: BRAND.text }}
-                    placeholder="Section (e.g., A)"
-                    placeholderTextColor="#A1A1A1"
-                    value={section}
-                    onChangeText={setSection}
-                    autoCapitalize="characters"
-                    editable={!loading}
-                  />
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: BRAND.text, marginBottom: 6 }}>Section</Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: BRAND.lightGray,
+                      borderWidth: 1,
+                      borderColor: '#E5E7EB',
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <TextInput
+                      style={{ flex: 1, fontSize: 14, paddingVertical: 12, paddingHorizontal: 10, color: BRAND.text }}
+                      placeholder="A"
+                      placeholderTextColor="#9CA3AF"
+                      value={section}
+                      onChangeText={setSection}
+                      autoCapitalize="characters"
+                      editable={!loading}
+                    />
+                  </View>
                 </View>
 
                 {/* Password */}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: BRAND.surface,
-                    borderWidth: 1,
-                    borderColor: BRAND.maroonLight,
-                    borderRadius: 12,
-                    marginBottom: 12,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <Lock size={18} color={BRAND.maroon} style={{ marginLeft: 12, paddingVertical: 12, paddingHorizontal: 10, backgroundColor: 'rgba(122,20,49,0.03)' }} />
-                  <TextInput
-                    style={{ flex: 1, fontSize: 16, paddingVertical: 14, paddingHorizontal: 12, color: BRAND.text }}
-                    placeholder="Password (min 8 chars)"
-                    placeholderTextColor="#A1A1A1"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                    editable={!loading}
-                  />
-                  <TouchableOpacity style={{ paddingHorizontal: 12, paddingVertical: 12 }} onPress={() => setShowPassword(!showPassword)} activeOpacity={0.7}>
-                    {showPassword ? <EyeOff size={18} color="#A1A1A1" /> : <Eye size={18} color="#A1A1A1" />}
-                  </TouchableOpacity>
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: BRAND.text, marginBottom: 6 }}>Password</Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: BRAND.lightGray,
+                      borderWidth: 1,
+                      borderColor: '#E5E7EB',
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <Lock size={16} color={BRAND.maroon} style={{ marginLeft: 10 }} />
+                    <TextInput
+                      style={{ flex: 1, fontSize: 14, paddingVertical: 12, paddingHorizontal: 10, color: BRAND.text }}
+                      placeholder="Min 6 characters"
+                      placeholderTextColor="#9CA3AF"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                      editable={!loading}
+                    />
+                    <TouchableOpacity style={{ paddingHorizontal: 10, paddingVertical: 12 }} onPress={() => setShowPassword(!showPassword)} activeOpacity={0.7}>
+                      {showPassword ? <EyeOff size={16} color={BRAND.muted} /> : <Eye size={16} color={BRAND.muted} />}
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 {/* Confirm Password */}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: BRAND.surface,
-                    borderWidth: 1,
-                    borderColor: BRAND.maroonLight,
-                    borderRadius: 12,
-                    marginBottom: 12,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <Lock size={18} color={BRAND.maroon} style={{ marginLeft: 12, paddingVertical: 12, paddingHorizontal: 10, backgroundColor: 'rgba(122,20,49,0.03)' }} />
-                  <TextInput
-                    style={{ flex: 1, fontSize: 16, paddingVertical: 14, paddingHorizontal: 12, color: BRAND.text }}
-                    placeholder="Confirm Password"
-                    placeholderTextColor="#A1A1A1"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry={!showConfirmPassword}
-                    editable={!loading}
-                  />
-                  <TouchableOpacity style={{ paddingHorizontal: 12, paddingVertical: 12 }} onPress={() => setShowConfirmPassword(!showConfirmPassword)} activeOpacity={0.7}>
-                    {showConfirmPassword ? <EyeOff size={18} color="#A1A1A1" /> : <Eye size={18} color="#A1A1A1" />}
-                  </TouchableOpacity>
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: BRAND.text, marginBottom: 6 }}>Confirm Password</Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: BRAND.lightGray,
+                      borderWidth: 1,
+                      borderColor: '#E5E7EB',
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <Lock size={16} color={BRAND.maroon} style={{ marginLeft: 10 }} />
+                    <TextInput
+                      style={{ flex: 1, fontSize: 14, paddingVertical: 12, paddingHorizontal: 10, color: BRAND.text }}
+                      placeholder="Confirm password"
+                      placeholderTextColor="#9CA3AF"
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      secureTextEntry={!showConfirmPassword}
+                      editable={!loading}
+                    />
+                    <TouchableOpacity style={{ paddingHorizontal: 10, paddingVertical: 12 }} onPress={() => setShowConfirmPassword(!showConfirmPassword)} activeOpacity={0.7}>
+                      {showConfirmPassword ? <EyeOff size={16} color={BRAND.muted} /> : <Eye size={16} color={BRAND.muted} />}
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 {/* Sign Up Button */}
                 <TouchableOpacity
-                  style={{ borderRadius: 12, marginVertical: 14, overflow: 'hidden', opacity: loading ? 0.75 : 1 }}
+                  style={{ borderRadius: 10, marginVertical: 4, overflow: 'hidden', opacity: loading ? 0.75 : 1 }}
                   onPress={handleSignup}
                   disabled={loading}
                   activeOpacity={0.9}
                 >
-                  <LinearGradient colors={[BRAND.maroon, '#9E2A48']} style={{ paddingVertical: 14, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: BRAND.surface, fontSize: 16, fontWeight: '700' }}>{loading ? 'Creating Account...' : 'Create Account'}</Text>
+                  <LinearGradient colors={[BRAND.maroon, '#9E2A48']} style={{ paddingVertical: 13, alignItems: 'center', justifyContent: 'center' }}>
+                    {loading ? (
+                      <ActivityIndicator size="small" color={BRAND.surface} />
+                    ) : (
+                      <Text style={{ color: BRAND.surface, fontSize: 15, fontWeight: '700' }}>Create Account</Text>
+                    )}
                   </LinearGradient>
                 </TouchableOpacity>
 
                 {/* Divider */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 12 }}>
-                  <View style={{ flex: 1, height: 1, backgroundColor: '#EFEFEF' }} />
-                  <Text style={{ marginHorizontal: 10, color: BRAND.muted, fontSize: 13 }}>or</Text>
-                  <View style={{ flex: 1, height: 1, backgroundColor: '#EFEFEF' }} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 14 }}>
+                  <View style={{ flex: 1, height: 1, backgroundColor: '#E5E7EB' }} />
+                  <Text style={{ marginHorizontal: 10, color: BRAND.muted, fontSize: 12 }}>or</Text>
+                  <View style={{ flex: 1, height: 1, backgroundColor: '#E5E7EB' }} />
                 </View>
 
                 {/* Login Link */}
                 <TouchableOpacity style={{ alignItems: 'center', paddingVertical: 8 }} onPress={() => router.push('/login')} activeOpacity={0.7} disabled={loading}>
-                  <Text style={{ color: BRAND.muted, fontSize: 15 }}>
+                  <Text style={{ color: BRAND.muted, fontSize: 14 }}>
                     Already have an account? <Text style={{ color: BRAND.maroon, fontWeight: '700' }}>Sign In</Text>
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              <View style={{ marginTop: 14, alignItems: 'center' }}>
-                <Text style={{ color: BRAND.muted, fontSize: 13, textAlign: 'center' }}>
-                  After creating your account you'll be prompted to enroll FaceID / device biometric. This is used to verify your identity when marking attendance.
+              {/* Info Text */}
+              <View style={{ marginTop: 16, alignItems: 'center' }}>
+                <Text style={{ color: BRAND.muted, fontSize: 12, textAlign: 'center', lineHeight: 18 }}>
+                  After creating your account, you'll need to capture your face for attendance verification.
                 </Text>
               </View>
             </View>

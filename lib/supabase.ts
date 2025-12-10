@@ -289,6 +289,7 @@ export type Database = {
           id: string;
           reg_number: string;
           name: string;
+          password: string;
           email: string | null;
           phone: string | null;
           department: string | null;
@@ -298,9 +299,10 @@ export type Database = {
           created_at: string | null;
         };
         Insert: {
-          id: string;
+          id?: string;
           reg_number: string;
           name: string;
+          password: string;
           email?: string | null;
           phone?: string | null;
           department?: string | null;
@@ -312,6 +314,7 @@ export type Database = {
         Update: {
           reg_number?: string;
           name?: string;
+          password?: string;
           email?: string | null;
           phone?: string | null;
           department?: string | null;

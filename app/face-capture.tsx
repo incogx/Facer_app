@@ -36,6 +36,7 @@ export default function FaceCaptureScreen() {
   // Redirect if already has face encoding
   useEffect(() => {
     if (!authLoading && session && student?.face_encoding) {
+      console.log('Face already captured, redirecting to dashboard');
       router.replace('/(tabs)');
     }
   }, [session, student, authLoading]);

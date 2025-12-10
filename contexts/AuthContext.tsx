@@ -86,93 +86,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize: Check for existing session
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    // Check if student is stored locally
+    storage.getItem("student").then((studentData) => {
+      if (studentData) {
+        try {
+          const parsed = JSON.parse(studentData);
+          setStudent(parsed);
+          // Create mock session
+          const mockSession = { user: { id: parsed.id } } as any;
+          setSession(mockSession);
+        } catch (error) {
+          console.error("Error parsing stored student:", error);
+        }
+      }
       setAuthLoading(false);
-      if (session) {
-        fetchStudentProfile(session.user.id);
-      }
     });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
-      if (session) {
-        await fetchStudentProfile(session.user.id);
-      } else {
-        setStudent(null);
-        await storage.removeItem("student");
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
-
-  // Fetch student profile from database
-  const fetchStudentProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("students")
-        .select("*")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Error fetching student profile:", error);
-        return;
-      }
-
-      if (data) {
-        setStudent(data);
-        await storage.setItem("student", JSON.stringify(data));
-      }
-    } catch (error) {
-      console.error("Error in fetchStudentProfile:", error);
-    }
-  };
 
   // Refresh student profile manually
   const refreshStudent = async () => {
-    if (session?.user) {
-      await fetchStudentProfile(session.user.id);
+    if (student?.id) {
+      try {
+        const { data, error } = await supabase
+          .from("students")
+          .select("*")
+          .eq("id", student.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Error refreshing student profile:", error);
+          return;
+        }
+
+        if (data) {
+          setStudent(data);
+          await storage.setItem("student", JSON.stringify(data));
+        }
+      } catch (error) {
+        console.error("Error in refreshStudent:", error);
+      }
     }
   };
 
-  // Sign in with registration number
+  // Sign in with registration number and password
   const signIn = async (reg: string, password: string) => {
     setLoading(true);
     try {
-      // First, find student by registration number to get email
+      // Find student by registration number and verify password
       const { data: studentData, error: studentError } = await supabase
         .from("students")
-        .select("email, id")
+        .select("*")
         .eq("reg_number", reg.trim())
         .maybeSingle();
 
       if (studentError) throw studentError;
-      if (!studentData || !studentData.email) {
+      if (!studentData) {
         throw new Error("Registration number not found");
       }
 
-      // Sign in with Supabase Auth using email
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: studentData.email,
-        password: password,
-      });
-
-      if (authError) {
-        // Normalize error messages
-        if (authError.message.includes("Invalid login credentials")) {
-          throw new Error("Incorrect password");
-        }
-        throw authError;
+      // Verify password (stored as plain text in database for this simple implementation)
+      if ((studentData as any).password !== password) {
+        throw new Error("Incorrect password");
       }
 
-      // Session will be set by onAuthStateChange listener
-      // Student profile will be fetched automatically
+      // Set student and create a mock session
+      setStudent(studentData as Student);
+      await storage.setItem("student", JSON.stringify(studentData));
+      await storage.setItem("regNumber", reg.trim());
+      
+      // Create a mock session object for compatibility
+      const mockSession = {
+        user: { id: (studentData as any).id }
+      } as any;
+      setSession(mockSession);
     } finally {
       setLoading(false);
     }
@@ -191,48 +177,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ) => {
     setLoading(true);
     try {
-      // First, create Supabase Auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email.toLowerCase().trim(),
-        password: password,
-      });
+      // Check if registration number already exists
+      const { data: existingStudent } = await supabase
+        .from("students")
+        .select("id")
+        .eq("reg_number", regNumber.trim())
+        .maybeSingle();
 
-      if (authError) {
-        if (authError.message.includes("already registered")) {
-          throw new Error("Email already registered. Please sign in instead.");
-        }
-        throw authError;
+      if (existingStudent) {
+        throw new Error("Registration number already exists. Please log in instead.");
       }
 
-      if (!authData.user) {
-        throw new Error("Failed to create user account");
-      }
-
-      // Then, create student profile linked to auth user
+      // Create student with password stored in database
       const { data: studentData, error: studentError } = await supabase
         .from("students")
         .insert({
-          id: authData.user.id,
           reg_number: regNumber.trim(),
+          password: password,
           name: name.trim(),
-          email: email.toLowerCase().trim(),
-          phone: phone.trim(),
-          department: department,
-          class_no: classNumber.trim(),
-          section: section.trim(),
-        })
+          email: email?.trim().toLowerCase() || null,
+          phone: phone?.trim() || null,
+          department: department || null,
+          class_no: classNumber?.trim() || null,
+          section: section?.trim() || null,
+        } as any)
         .select()
         .single();
 
       if (studentError) {
-        // If student creation fails, try to clean up auth user
-        await supabase.auth.signOut();
+        console.error("Signup error:", studentError);
         throw studentError;
       }
 
-      // Set student immediately (session will be set by listener)
-      setStudent(studentData);
+      if (!studentData) {
+        throw new Error("Failed to create student account");
+      }
+
+      // Set student immediately
+      setStudent(studentData as Student);
       await storage.setItem("student", JSON.stringify(studentData));
+      // Create mock session
+      const mockSession = { user: { id: (studentData as any).id } } as any;
+      setSession(mockSession);
+      console.log('Signup success - Student created:', (studentData as any).name, 'Face encoding:', (studentData as any).face_encoding);
     } finally {
       setLoading(false);
     }
@@ -242,10 +229,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     setLoading(true);
     try {
-      await supabase.auth.signOut();
       setStudent(null);
       setSession(null);
       await storage.removeItem("student");
+      await storage.removeItem("regNumber");
     } catch (error) {
       console.error("Error signing out:", error);
       throw error;
