@@ -152,6 +152,9 @@ export type Database = {
       classes: {
         Row: {
           id: string;
+          name: string | null;
+          code: string | null;
+          instructor_name: string | null;
           created_at: string | null;
           class_no: string | null;
           faculty_id: string | null;
@@ -159,12 +162,18 @@ export type Database = {
         };
         Insert: {
           id?: string;
+          name?: string | null;
+          code?: string | null;
+          instructor_name?: string | null;
           created_at?: string | null;
           class_no?: string | null;
           faculty_id?: string | null;
           department?: string | null;
         };
         Update: {
+          name?: string | null;
+          code?: string | null;
+          instructor_name?: string | null;
           created_at?: string | null;
           class_no?: string | null;
           faculty_id?: string | null;
@@ -273,9 +282,134 @@ export type Database = {
           updated_at?: string | null;
         };
       };
+
+      // Actual tables used in the codebase
+      students: {
+        Row: {
+          id: string;
+          reg_number: string;
+          name: string;
+          email: string | null;
+          phone: string | null;
+          department: string | null;
+          class_no: string | null;
+          section: string | null;
+          face_encoding: string | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id: string;
+          reg_number: string;
+          name: string;
+          email?: string | null;
+          phone?: string | null;
+          department?: string | null;
+          class_no?: string | null;
+          section?: string | null;
+          face_encoding?: string | null;
+          created_at?: string | null;
+        };
+        Update: {
+          reg_number?: string;
+          name?: string;
+          email?: string | null;
+          phone?: string | null;
+          department?: string | null;
+          class_no?: string | null;
+          section?: string | null;
+          face_encoding?: string | null;
+          created_at?: string | null;
+        };
+      };
+
+      attendance: {
+        Row: {
+          id: string;
+          student_id: string | null;
+          class_id: string | null;
+          session_id: string | null;
+          marked_at: string | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          student_id?: string | null;
+          class_id?: string | null;
+          session_id?: string | null;
+          marked_at?: string | null;
+          created_at?: string | null;
+        };
+        Update: {
+          student_id?: string | null;
+          class_id?: string | null;
+          session_id?: string | null;
+          marked_at?: string | null;
+          created_at?: string | null;
+        };
+      };
+
+      sessions: {
+        Row: {
+          id: string;
+          class_id: string | null;
+          qr_payload: string | null;
+          session_date: string | null;
+          start_time: string | null;
+          end_time: string | null;
+          expires_at: string | null;
+          status: string | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          class_id?: string | null;
+          qr_payload?: string | null;
+          session_date?: string | null;
+          start_time?: string | null;
+          end_time?: string | null;
+          expires_at?: string | null;
+          status?: string | null;
+          created_at?: string | null;
+        };
+        Update: {
+          class_id?: string | null;
+          qr_payload?: string | null;
+          session_date?: string | null;
+          start_time?: string | null;
+          end_time?: string | null;
+          expires_at?: string | null;
+          status?: string | null;
+          created_at?: string | null;
+        };
+      };
     };
     Views: {};
-    Functions: {};
+    Functions: {
+      validate_qr: {
+        Args: {
+          qr_data: string;
+        };
+        Returns: {
+          valid: boolean;
+          class_id: string | null;
+          session_id: string | null;
+          message: string | null;
+        };
+      };
+      mark_attendance: {
+        Args: {
+          p_student_id: string;
+          p_class_id: string;
+          p_session_id: string;
+          p_method: string;
+          p_confidence: number;
+        };
+        Returns: {
+          status: string;
+          message: string | null;
+        };
+      };
+    };
     Enums: {};
     CompositeTypes: {};
   };
