@@ -1,3 +1,4 @@
+// lib/supabase.ts
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
@@ -5,50 +6,39 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 /**
- * NOTE:
- * - In Expo managed apps it is best to provide these via app.config.js / app.json `extra`
- *   and access them through `Constants.expoConfig.extra`.
- * - For web builds you can still use `process.env.EXPO_PUBLIC_...` if you configured your bundler,
- *   but the safest cross-platform approach is to prefer `Constants.expoConfig.extra` first.
+ * Cross-platform Supabase client for Expo (web + native).
+ * Provide credentials via app.config.js -> extra OR via env vars for web.
  *
- * Example app.config.js extra:
- *  export default {
- *    extra: {
- *      supabaseUrl: "https://<project>.supabase.co",
- *      supabaseAnonKey: "public-anon-key",
- *    }
- *  }
+ * Example app.config.js:
+ * export default {
+ *   extra: {
+ *     supabaseUrl: "https://your-project.supabase.co",
+ *     supabaseAnonKey: "public-anon-key",
+ *   }
+ * }
  */
 
-/* Resolve URL and anon key cross-platform (expo constants -> env fallback) */
-const supabaseUrl =
-  (Constants.expoConfig && (Constants.expoConfig.extra as any)?.supabaseUrl) ||
-  process.env.EXPO_PUBLIC_SUPABASE_URL ||
-  (global as any).__SUPABASE_URL__; // optional manual injection
+/* Resolve config (expo extra preferred, fallback to env) */
+const expoExtra = (Constants.expoConfig && (Constants.expoConfig.extra as any)) || {};
+const SUPABASE_URL =
+  expoExtra.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || (global as any).__SUPABASE_URL__;
+const SUPABASE_ANON_KEY =
+  expoExtra.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || (global as any).__SUPABASE_ANON_KEY__;
 
-const supabaseAnonKey =
-  (Constants.expoConfig && (Constants.expoConfig.extra as any)?.supabaseAnonKey) ||
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
-  (global as any).__SUPABASE_ANON_KEY__; // optional manual injection
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  // Throw early so you see a clear message instead of "Invalid API key" from Supabase
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  // Fail fast with a clear message instead of a generic "Invalid API key" error later
   throw new Error(
-    'Missing Supabase configuration. Make sure supabaseUrl and supabaseAnonKey are provided via app.config.js (Constants.expoConfig.extra) or environment variables EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY.'
+    'Missing Supabase configuration. Add supabaseUrl & supabaseAnonKey to app.config.js -> extra or set EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY env vars.'
   );
 }
 
-/**
- * Secure storage adapter shape:
- * Supabase expects an object with async getItem / setItem / removeItem methods that return Promises.
- * The adapter below uses Expo SecureStore on native and localStorage on web (wrapped in Promises).
- */
+/* Storage adapter required by supabase-js for auth persistence.
+   Uses Expo SecureStore on native and localStorage on web (wrapped as async). */
 const ExpoSecureStoreAdapter = {
   async getItem(key: string): Promise<string | null> {
     if (Platform.OS === 'web') {
       try {
-        const v = localStorage.getItem(key);
-        return v;
+        return localStorage.getItem(key);
       } catch {
         return null;
       }
@@ -73,135 +63,226 @@ const ExpoSecureStoreAdapter = {
   },
 };
 
-/* Database typing (keep as you had, adjust if your Postgres types differ) */
+/* Strongly-typed Database definition (adjust columns if your schema differs) */
 export type Database = {
   public: {
     Tables: {
-      students: {
+      profiles: {
         Row: {
           id: string;
-          email: string;
-          name: string;
-          roll_number: string;
-          reg_number: string;
-          face_encoding: string | null;
-          created_at: string;
+          email: string | null;
+          full_name: string | null;
+          role: 'STUDENT' | 'FACULTY' | 'HOD' | 'ADMIN' | null;
+          department: string | null;
+          phone: string | null;
+          created_at: string | null;
         };
         Insert: {
           id?: string;
-          email: string;
-          name: string;
-          roll_number: string;
-          reg_number: string;
-          face_encoding?: string | null;
-          created_at?: string;
+          email?: string | null;
+          full_name?: string | null;
+          role?: 'STUDENT' | 'FACULTY' | 'HOD' | 'ADMIN' | null;
+          department?: string | null;
+          phone?: string | null;
+          created_at?: string | null;
         };
         Update: {
-          id?: string;
-          email?: string;
-          name?: string;
-          roll_number?: string;
-          reg_number?: string;
-          face_encoding?: string | null;
-          created_at?: string;
+          email?: string | null;
+          full_name?: string | null;
+          role?: 'STUDENT' | 'FACULTY' | 'HOD' | 'ADMIN' | null;
+          department?: string | null;
+          phone?: string | null;
+          created_at?: string | null;
         };
       };
+
+      student_profiles: {
+        Row: {
+          id: string;
+          register_no: string;
+          full_name: string;
+          email: string | null;
+          phone: string | null;
+          department: string | null;
+          class_no: string | null;
+          section: string | null;
+          face_enrolled: boolean | null;
+          face_template_id: string | null;
+          consent_face: boolean | null;
+          device_bound: boolean | null;
+          device_id: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          register_no: string;
+          full_name: string;
+          email?: string | null;
+          phone?: string | null;
+          department?: string | null;
+          class_no?: string | null;
+          section?: string | null;
+          face_enrolled?: boolean | null;
+          face_template_id?: string | null;
+          consent_face?: boolean | null;
+          device_bound?: boolean | null;
+          device_id?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          register_no?: string;
+          full_name?: string;
+          email?: string | null;
+          phone?: string | null;
+          department?: string | null;
+          class_no?: string | null;
+          section?: string | null;
+          face_enrolled?: boolean | null;
+          face_template_id?: string | null;
+          consent_face?: boolean | null;
+          device_bound?: boolean | null;
+          device_id?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+      };
+
       classes: {
         Row: {
           id: string;
-          name: string;
-          code: string;
-          instructor_name: string;
-          created_at: string;
+          created_at: string | null;
+          class_no: string | null;
+          faculty_id: string | null;
+          department: string | null;
         };
         Insert: {
           id?: string;
-          name: string;
-          code: string;
-          instructor_name?: string;
-          created_at?: string;
+          created_at?: string | null;
+          class_no?: string | null;
+          faculty_id?: string | null;
+          department?: string | null;
         };
         Update: {
-          id?: string;
-          name?: string;
-          code?: string;
-          instructor_name?: string;
-          created_at?: string;
+          created_at?: string | null;
+          class_no?: string | null;
+          faculty_id?: string | null;
+          department?: string | null;
         };
       };
-      sessions: {
+
+      attendance_sessions: {
         Row: {
           id: string;
-          class_id: string;
-          qr_payload: string;
-          session_date: string;
-          start_time: string;
-          end_time: string | null;
-          expires_at: string | null;
-          status: string;
-          created_at: string;
+          class_no: string | null;
+          class_id: string | null;
+          faculty_id: string | null;
+          faculty_name: string | null;
+          department: string | null;
+          session_date: string | null;
+          started_at: string | null;
+          ended_at: string | null;
+          status: string | null;
+          qr_token: string | null;
+          created_at: string | null;
         };
         Insert: {
           id?: string;
-          class_id: string;
-          qr_payload: string;
-          session_date: string;
-          start_time: string;
-          end_time?: string | null;
-          expires_at?: string | null;
-          status?: string;
-          created_at?: string;
+          class_no: string;
+          class_id?: string | null;
+          faculty_id?: string | null;
+          faculty_name?: string | null;
+          department?: string | null;
+          session_date?: string | null;
+          started_at?: string | null;
+          ended_at?: string | null;
+          status?: string | null;
+          qr_token?: string | null;
+          created_at?: string | null;
         };
         Update: {
-          id?: string;
-          class_id?: string;
-          qr_payload?: string;
-          session_date?: string;
-          start_time?: string;
-          end_time?: string | null;
-          expires_at?: string | null;
-          status?: string;
-          created_at?: string;
+          class_no?: string;
+          class_id?: string | null;
+          faculty_id?: string | null;
+          faculty_name?: string | null;
+          department?: string | null;
+          session_date?: string | null;
+          started_at?: string | null;
+          ended_at?: string | null;
+          status?: string | null;
+          qr_token?: string | null;
+          created_at?: string | null;
         };
       };
-      attendance: {
+
+      attendance_marks: {
         Row: {
           id: string;
-          student_id: string;
-          class_id: string;
-          session_id: string;
-          marked_at: string;
-          method: string;
-          verification_confidence: number | null;
-          created_at: string;
+          session_id: string | null;
+          class_no: string | null;
+          student_id: string | null;
+          register_no: string | null;
+          student_name: string | null;
+          status: 'PRESENT' | 'ABSENT' | null;
+          marked_at: string | null;
+          marked_by: string | null;
         };
         Insert: {
           id?: string;
-          student_id: string;
-          class_id: string;
-          session_id: string;
-          marked_at?: string;
-          method?: string;
-          verification_confidence?: number | null;
-          created_at?: string;
+          session_id?: string | null;
+          class_no?: string | null;
+          student_id?: string | null;
+          register_no?: string | null;
+          student_name?: string | null;
+          status?: 'PRESENT' | 'ABSENT' | null;
+          marked_at?: string | null;
+          marked_by?: string | null;
         };
         Update: {
-          id?: string;
-          student_id?: string;
-          class_id?: string;
-          session_id?: string;
-          marked_at?: string;
-          method?: string;
-          verification_confidence?: number | null;
-          created_at?: string;
+          session_id?: string | null;
+          class_no?: string | null;
+          student_id?: string | null;
+          register_no?: string | null;
+          student_name?: string | null;
+          status?: 'PRESENT' | 'ABSENT' | null;
+          marked_at?: string | null;
+          marked_by?: string | null;
+        };
+      };
+
+      attendance_approvals: {
+        Row: {
+          session_id: string;
+          hod_id: string | null;
+          status: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
+          comment: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          session_id: string;
+          hod_id?: string | null;
+          status?: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
+          comment?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          hod_id?: string | null;
+          status?: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
+          comment?: string | null;
+          updated_at?: string | null;
         };
       };
     };
+    Views: {};
+    Functions: {};
+    Enums: {};
+    CompositeTypes: {};
   };
 };
 
-/* Create the supabase client with the adapter */
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+/* Create the supabase client instance */
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     storage: ExpoSecureStoreAdapter as any,
     autoRefreshToken: true,
